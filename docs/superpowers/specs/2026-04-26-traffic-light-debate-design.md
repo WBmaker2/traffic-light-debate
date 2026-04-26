@@ -8,7 +8,7 @@
 
 `신호등 토론방: 내 생각 포스트잇`은 5~6학년 국어, 사회, 도덕 수업에서 모든 학생이 자신의 의견을 조용히 제출하고, 학급 전체의 찬성/반대/중립 비율을 실시간으로 확인할 수 있게 하는 디지털 토론 보드입니다.
 
-교사는 Google 로그인 후 토론 세션을 생성하고, 학생은 세션 코드 또는 QR 코드로 접속합니다. 학생 의견은 색상 포스트잇 형태로 교사 화면에 실시간 반영되며, 교사는 토론 결과를 PDF, JSON, Firebase 데이터베이스 백업 파일로 저장할 수 있습니다.
+교사는 Google 로그인 후 토론 세션을 생성하고, 학생은 세션 코드 또는 QR 코드로 접속합니다. 학생 의견은 색상 포스트잇 형태로 교사 화면에 실시간 반영되며, 교사는 토론 결과를 PDF, JSON, Firebase 데이터베이스 백업으로 저장할 수 있습니다.
 
 ## 2. 교육 맥락
 
@@ -58,8 +58,8 @@
 - PDF 내보내기
 - JSON 내보내기
 - JSON 불러오기 및 세션 복원
-- 교사 소유 세션 Firebase 백업 파일 생성
-- 백업 파일 다운로드 및 Firebase Storage 저장
+- 교사 소유 세션 Firebase DB 백업 생성
+- 백업 JSON 다운로드 및 Firestore `backups` 컬렉션 저장
 
 ### 1차 범위에서 제외
 
@@ -77,13 +77,13 @@
 - 스타일링: CSS Modules 또는 단일 CSS 토큰 기반 전역 스타일
 - 인증: Firebase Authentication Google Provider
 - 실시간 데이터베이스: Cloud Firestore
-- 파일 저장: Firebase Storage
+- 백업 저장: Cloud Firestore `backups` 컬렉션
 - QR 코드: `qrcode.react`
 - PDF 생성: `jspdf`, `html2canvas` 또는 `@react-pdf/renderer`
 - 테스트: Vitest, React Testing Library
 - 배포 후보: Firebase Hosting 또는 GitHub Pages
 
-Firebase Hosting을 우선 추천합니다. Firebase Auth, Firestore, Storage와 같은 프로젝트 안에서 운영할 수 있어 환경 설정과 배포 경로가 단순해집니다.
+Firebase Hosting을 우선 추천합니다. Firebase Auth, Firestore와 같은 프로젝트 안에서 운영할 수 있어 환경 설정과 배포 경로가 단순해집니다. Spark 무료 요금제에서는 새 Firebase Storage 생성이 제한될 수 있으므로 1차 구현은 Firestore 문서 기반 백업을 사용합니다.
 
 ## 6. 정보 구조와 라우팅
 
@@ -275,7 +275,7 @@ type DebateBackup = {
   kind: "room-json" | "teacher-database-backup";
   roomIds: string[];
   fileName: string;
-  storagePath: string;
+  payload: TeacherDatabaseBackup;
   roomCount: number;
   postCount: number;
   createdAt: Timestamp;
@@ -387,13 +387,13 @@ Firebase 데이터베이스 백업은 개별 토론 JSON 저장보다 넓은 범
 백업은 두 곳에 저장합니다.
 
 1. 사용자 기기로 JSON 다운로드
-2. Firebase Storage의 교사별 경로에 업로드
+2. Firestore `backups/{backupId}` 문서에 payload와 메타데이터 저장
 
 ```text
-backups/{ownerUid}/{yyyyMMdd-HHmmss}-traffic-light-debate-backup.json
+backups/{backupId}
 ```
 
-백업 메타데이터는 `backups/{backupId}` 문서에 저장합니다.
+백업 파일명, 포함 세션 수, 의견 수, 앱 버전, 생성 시각도 같은 문서에 저장합니다.
 
 ### 백업 파일 형식
 
@@ -445,7 +445,7 @@ type TeacherDatabaseBackup = {
 - 학생은 로그인 없이 열린 세션에 의견을 제출할 수 있습니다.
 - 학생은 기존 의견을 수정하거나 삭제할 수 없습니다.
 - 교사는 자신이 만든 세션과 의견만 읽고 관리할 수 있습니다.
-- 백업 파일은 해당 교사만 읽고 쓸 수 있습니다.
+- 백업 문서는 해당 교사만 읽고 쓸 수 있습니다.
 
 ### Firestore Rules 방향
 
@@ -525,7 +525,7 @@ backups/{backupId}
 10. 교사 대시보드에서 세션 검색, 필터, 정렬 확인
 11. 세션 닫기, 다시 열기, 보관, 삭제 확인
 12. 여러 세션 선택 후 백업 대상 지정 확인
-13. Firebase 백업 생성, 다운로드, Storage 업로드 확인
+13. Firebase 백업 생성, 다운로드, Firestore `backups` 문서 저장 확인
 14. 백업 파일 미리보기 후 새 세션들로 복원 확인
 
 ## 18. 구현 순서 제안
@@ -533,7 +533,7 @@ backups/{backupId}
 1. Vite + React + TypeScript 프로젝트 초기화
 2. 테스트 환경과 기본 스모크 테스트 추가
 3. Firebase 프로젝트 설정과 환경 변수 구성
-4. Auth, Firestore, Storage 어댑터 작성
+4. Auth, Firestore 어댑터 작성
 5. 공통 타입과 통계 계산 유틸 작성
 6. 교사 로그인 및 대시보드 구현
 7. 세션 생성 및 세션 코드 생성 구현

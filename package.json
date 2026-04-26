@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "deploy:firebase": "npm run build && npx firebase-tools deploy --only hosting,firestore:rules,storage",
+    "deploy:firebase": "npm run build && npx firebase-tools deploy --only hosting,firestore:rules",
     "lint": "eslint .",
     "test": "vitest"
   },

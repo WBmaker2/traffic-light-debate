@@ -16,7 +16,6 @@ import {
   type DocumentData,
   type QueryDocumentSnapshot,
 } from "firebase/firestore";
-import { ref, uploadBytes } from "firebase/storage";
 import { createTeacherBackup } from "../lib/backup";
 import { createRoomExport, restoreRoomFromExport } from "../lib/exportImport";
 import { generateSessionCode, normalizeSessionCode } from "../lib/sessionCode";
@@ -264,18 +263,13 @@ class FirebaseDebateRepository implements DebateRepository {
     const entries = await this.getBackupEntries(owner.uid, roomIds);
     const backup = createTeacherBackup(owner, entries);
     const fileName = makeBackupFileName();
-    const storagePath = `backups/${owner.uid}/${fileName}`;
-    const blob = new Blob([JSON.stringify(backup, null, 2)], {
-      type: "application/json;charset=utf-8",
-    });
 
-    await uploadBytes(ref(this.services.storage, storagePath), blob);
     await addDoc(collection(this.services.db, "backups"), {
       ownerUid: owner.uid,
       kind: backup.kind,
       roomIds: entries.map((entry) => entry.room.id),
       fileName,
-      storagePath,
+      payload: backup,
       roomCount: backup.summary.roomCount,
       postCount: backup.summary.postCount,
       createdAt: backup.exportedAt,

@@ -4,9 +4,9 @@
 
 **Goal:** Build a Firebase-ready classroom debate board where teachers manage multiple sessions and students submit color-coded opinions in real time.
 
-**Architecture:** The app uses Vite, React, and TypeScript with a repository interface that selects Firestore/Storage/Auth when Firebase environment variables exist and a local demo repository otherwise. Pure utilities handle statistics, session codes, export/import, filtering, and backup transforms so the core behavior is testable without Firebase.
+**Architecture:** The app uses Vite, React, and TypeScript with a repository interface that selects Firestore/Auth when Firebase environment variables exist and a local demo repository otherwise. Pure utilities handle statistics, session codes, export/import, filtering, and backup transforms so the core behavior is testable without Firebase.
 
-**Tech Stack:** Vite, React, TypeScript, Firebase Auth/Firestore/Storage, qrcode.react, jsPDF, html2canvas, Vitest, React Testing Library.
+**Tech Stack:** Vite, React, TypeScript, Firebase Auth/Firestore, Firebase Hosting, qrcode.react, jsPDF, html2canvas, Vitest, React Testing Library.
 
 ---
 
@@ -55,13 +55,12 @@
 - Create: `src/hooks/useAuth.ts`
 - Create: `src/hooks/useRealtimeValue.ts`
 - Create: `firestore.rules`
-- Create: `storage.rules`
 - Create: `firebase.json`
 
 - [ ] Add Firebase initialization with demo-mode fallback.
 - [ ] Implement auth adapter for Google sign-in and demo teacher sign-in.
 - [ ] Implement repository methods for rooms, posts, JSON import/export, backups, restore, and soft deletion.
-- [ ] Add Firestore and Storage rules for teacher-owned rooms, public room lookup, student post create, and teacher backup access.
+- [ ] Add Firestore rules for teacher-owned rooms, public room lookup, student post create, and teacher backup access.
 
 ### Task 4: Teacher Experience
 
