@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && node scripts/create-pages-fallback.mjs",
+    "build": "tsc -b && vite build",
+    "deploy:firebase": "npm run build && npx firebase-tools deploy --only hosting,firestore:rules,storage",
     "lint": "eslint .",
     "test": "vitest"
   },

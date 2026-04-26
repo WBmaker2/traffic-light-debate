@@ -135,6 +135,19 @@
   padding: 24px;
 }
 
+.auth-card {
+  width: min(100%, 620px);
+  gap: 16px;
+}
+
+.auth-card__copy {
+  max-width: 520px;
+  margin: 0;
+  color: #5d615d;
+  line-height: 1.7;
+  text-align: center;
+}
+
 .panel h2 {
   margin: 0 0 16px;
 }
@@ -221,6 +234,14 @@ button {
   width: 42px;
   background: #fffdf8;
   color: #29312c;
+  border: 1px solid #d8d1c4;
+}
+
+.teacher-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  object-fit: cover;
   border: 1px solid #d8d1c4;
 }
 

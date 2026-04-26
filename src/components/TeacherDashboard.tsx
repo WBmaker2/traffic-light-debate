@@ -74,14 +74,26 @@ export function TeacherDashboard({ navigate }: TeacherDashboardProps) {
   }
 
   if (!auth.user) {
+    const isDemoMode = auth.mode === "demo";
+
     return (
       <main className="page page--center auth-card">
         <p className="eyebrow">교사 관리 화면</p>
-        <h1>Google 로그인 후 토론방을 관리합니다.</h1>
+        <h1>
+          {isDemoMode
+            ? "데모 교사로 토론방을 관리합니다."
+            : "Google 로그인 후 토론방을 관리합니다."}
+        </h1>
+        <p className="auth-card__copy">
+          {isDemoMode
+            ? "Firebase 환경 변수가 없어서 로컬 데모 저장소로 실행 중입니다."
+            : "교사 계정으로 로그인하면 내 토론 세션과 백업 기록만 관리할 수 있습니다."}
+        </p>
         <button className="primary-button" type="button" onClick={() => void auth.signIn()}>
           <LogIn size={18} aria-hidden="true" />
-          교사로 로그인
+          {isDemoMode ? "데모로 계속하기" : "Google로 로그인"}
         </button>
+        {auth.error ? <p className="form-error">{auth.error}</p> : null}
       </main>
     );
   }
@@ -215,8 +227,16 @@ export function TeacherDashboard({ navigate }: TeacherDashboardProps) {
         </button>
         <div className="topbar__right">
           {repo.mode === "demo" ? <span className="mode-pill">데모 저장소</span> : null}
+          {auth.user.photoURL ? (
+            <img className="teacher-avatar" src={auth.user.photoURL} alt="" />
+          ) : null}
           <span>{auth.user.displayName ?? auth.user.email ?? "교사"}</span>
-          <button className="icon-button" type="button" aria-label="로그아웃" onClick={() => void auth.signOut()}>
+          <button
+            className="icon-button"
+            type="button"
+            aria-label="로그아웃"
+            onClick={() => void auth.signOut()}
+          >
             <LogOut size={18} aria-hidden="true" />
           </button>
         </div>

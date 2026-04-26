@@ -37,9 +37,12 @@ export function getFirebaseServices(): FirebaseServices | null {
   }
 
   const app = getApps().length > 0 ? getApps()[0] : initializeApp(config);
+  const auth = getAuth(app);
+  auth.languageCode = "ko";
+
   cachedServices = {
     app,
-    auth: getAuth(app),
+    auth,
     db: getFirestore(app),
     storage: getStorage(app),
   };
