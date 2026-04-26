@@ -1,0 +1,43 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function ownsRoom(roomId) {
+      return signedIn()
+        && get(/databases/$(database)/documents/rooms/$(roomId)).data.ownerUid == request.auth.uid;
+    }
+
+    match /users/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    match /rooms/{roomId} {
+      allow read, write: if signedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+
+      match /posts/{postId} {
+        allow read, update, delete: if ownsRoom(roomId);
+        allow create: if get(/databases/$(database)/documents/rooms/$(roomId)).data.status == "open"
+          && request.resource.data.studentName is string
+          && request.resource.data.reason is string
+          && request.resource.data.stance in ["agree", "disagree", "neutral"];
+      }
+    }
+
+    match /publicRooms/{sessionCode} {
+      allow read: if true;
+      allow write: if signedIn();
+    }
+
+    match /backups/{backupId} {
+      allow read, write: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid;
+      allow read: if signedIn()
+        && resource.data.ownerUid == request.auth.uid;
+    }
+  }
+}
