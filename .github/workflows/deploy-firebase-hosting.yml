@@ -15,7 +15,7 @@ permissions:
 env:
   FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
   FIREBASE_CONFIG_READY: ${{ vars.VITE_FIREBASE_API_KEY != '' && vars.VITE_FIREBASE_AUTH_DOMAIN != '' && vars.VITE_FIREBASE_PROJECT_ID != '' && vars.VITE_FIREBASE_MESSAGING_SENDER_ID != '' && vars.VITE_FIREBASE_APP_ID != '' }}
-  FIREBASE_SERVICE_ACCOUNT_READY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+  FIREBASE_SERVICE_ACCOUNT_READY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TRAFFIC_LIGHT_DEBATE != '' }}
 
 jobs:
   build_and_deploy:
@@ -53,7 +53,7 @@ jobs:
         uses: FirebaseExtended/action-hosting-deploy@v0.10.0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TRAFFIC_LIGHT_DEBATE }}
           projectId: ${{ env.FIREBASE_PROJECT_ID }}
           expires: 14d
 
@@ -61,10 +61,10 @@ jobs:
         if: github.event_name != 'pull_request' && env.FIREBASE_PROJECT_ID != '' && env.FIREBASE_CONFIG_READY == 'true' && env.FIREBASE_SERVICE_ACCOUNT_READY == 'true'
         uses: FirebaseExtended/action-hosting-deploy@v0.10.0
         with:
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TRAFFIC_LIGHT_DEBATE }}
           projectId: ${{ env.FIREBASE_PROJECT_ID }}
           channelId: live
 
       - name: Skip deploy notice
         if: env.FIREBASE_PROJECT_ID == '' || env.FIREBASE_CONFIG_READY != 'true' || env.FIREBASE_SERVICE_ACCOUNT_READY != 'true'
-        run: echo "Firebase Hosting deploy skipped. Set FIREBASE_PROJECT_ID, VITE_FIREBASE_* variables, and FIREBASE_SERVICE_ACCOUNT secret."
+        run: echo "Firebase Hosting deploy skipped. Set FIREBASE_PROJECT_ID, VITE_FIREBASE_* variables, and FIREBASE_SERVICE_ACCOUNT_TRAFFIC_LIGHT_DEBATE secret."
