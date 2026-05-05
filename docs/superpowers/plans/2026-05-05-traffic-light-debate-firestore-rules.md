@@ -44,6 +44,6 @@
 - [x] `npm run build`
 - [x] `npm run test:e2e`
 - [x] `npx tsc --noEmit --target ES2022 --module ESNext --moduleResolution Bundler --types node,vitest --skipLibCheck tests/rules/firestore.rules.test.ts vitest.rules.config.ts`
-- [ ] GitHub Actions에서 Firestore rules test와 Firebase 배포 성공 확인
+- [x] GitHub Actions에서 Firestore rules test와 Firebase 배포 성공 확인
 
-검증 메모: 로컬 macOS에는 Java Runtime이 없어 Firestore 에뮬레이터 실행이 제한된다. 실제 rules 테스트는 CI의 Java 설정 후 GitHub Actions에서 최종 확인한다.
+검증 메모: 로컬 macOS에는 Java Runtime이 없어 `npm run test:rules`가 `java -version` 단계에서 중단된다. GitHub Actions run `25373215592`에서 `Firestore rules test`, `Deploy live channel`, `Deploy Firestore rules` 단계가 모두 성공했다.
