@@ -63,6 +63,7 @@
 
 - [x] `main` push 배포 시 Firebase Hosting 배포 후 Firestore Rules도 함께 배포하도록 GitHub Actions를 보강한다.
 - [x] 기존 GitHub Secret `FIREBASE_SERVICE_ACCOUNT_TRAFFIC_LIGHT_DEBATE`를 재사용해 Rules 배포 인증을 처리한다.
+- [x] 서비스 계정에 Firebase Rules Admin 권한이 없으면 Hosting 배포는 유지하고 Actions 경고로 후속 조치를 안내한다.
 
 ## 다음 후속 후보
 
