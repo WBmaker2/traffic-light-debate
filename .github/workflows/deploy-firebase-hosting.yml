@@ -73,16 +73,10 @@ jobs:
           JSON
 
       - name: Deploy Firestore rules
-        id: deploy_firestore_rules
         if: github.event_name != 'pull_request' && env.FIREBASE_PROJECT_ID != '' && env.FIREBASE_SERVICE_ACCOUNT_READY == 'true'
-        continue-on-error: true
         run: npx --yes firebase-tools deploy --only firestore:rules --project "$FIREBASE_PROJECT_ID" --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
-
-      - name: Firestore rules permission notice
-        if: github.event_name != 'pull_request' && steps.deploy_firestore_rules.outcome == 'failure'
-        run: echo "::warning::Firestore rules deploy failed. Grant the Firebase service account the Firebase Rules Admin role, then rerun this workflow."
 
       - name: Skip deploy notice
         if: env.FIREBASE_PROJECT_ID == '' || env.FIREBASE_CONFIG_READY != 'true' || env.FIREBASE_SERVICE_ACCOUNT_READY != 'true'
