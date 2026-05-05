@@ -13,7 +13,6 @@ permissions:
   pull-requests: write
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
   FIREBASE_CONFIG_READY: ${{ vars.VITE_FIREBASE_API_KEY != '' && vars.VITE_FIREBASE_AUTH_DOMAIN != '' && vars.VITE_FIREBASE_PROJECT_ID != '' && vars.VITE_FIREBASE_MESSAGING_SENDER_ID != '' && vars.VITE_FIREBASE_APP_ID != '' }}
   FIREBASE_SERVICE_ACCOUNT_READY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TRAFFIC_LIGHT_DEBATE != '' }}
@@ -64,29 +63,24 @@ jobs:
       - name: E2E test
         run: npm run test:e2e
 
-      - name: Deploy preview channel
-        if: github.event_name == 'pull_request' && env.FIREBASE_PROJECT_ID != '' && env.FIREBASE_CONFIG_READY == 'true' && env.FIREBASE_SERVICE_ACCOUNT_READY == 'true'
-        uses: FirebaseExtended/action-hosting-deploy@v0.10.0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TRAFFIC_LIGHT_DEBATE }}
-          projectId: ${{ env.FIREBASE_PROJECT_ID }}
-          expires: 14d
-
-      - name: Deploy live channel
-        if: github.event_name != 'pull_request' && env.FIREBASE_PROJECT_ID != '' && env.FIREBASE_CONFIG_READY == 'true' && env.FIREBASE_SERVICE_ACCOUNT_READY == 'true'
-        uses: FirebaseExtended/action-hosting-deploy@v0.10.0
-        with:
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TRAFFIC_LIGHT_DEBATE }}
-          projectId: ${{ env.FIREBASE_PROJECT_ID }}
-          channelId: live
-
       - name: Write Firebase service account
-        if: github.event_name != 'pull_request' && env.FIREBASE_PROJECT_ID != '' && env.FIREBASE_SERVICE_ACCOUNT_READY == 'true'
+        if: env.FIREBASE_PROJECT_ID != '' && env.FIREBASE_SERVICE_ACCOUNT_READY == 'true'
         run: |
           cat > "$RUNNER_TEMP/firebase-service-account.json" <<'JSON'
           ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TRAFFIC_LIGHT_DEBATE }}
           JSON
+
+      - name: Deploy preview channel
+        if: github.event_name == 'pull_request' && env.FIREBASE_PROJECT_ID != '' && env.FIREBASE_CONFIG_READY == 'true' && env.FIREBASE_SERVICE_ACCOUNT_READY == 'true'
+        run: npx --yes firebase-tools hosting:channel:deploy "pr-${{ github.event.pull_request.number }}" --project "$FIREBASE_PROJECT_ID" --expires 14d --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+
+      - name: Deploy live channel
+        if: github.event_name != 'pull_request' && env.FIREBASE_PROJECT_ID != '' && env.FIREBASE_CONFIG_READY == 'true' && env.FIREBASE_SERVICE_ACCOUNT_READY == 'true'
+        run: npx --yes firebase-tools deploy --only hosting --project "$FIREBASE_PROJECT_ID" --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
 
       - name: Deploy Firestore rules
         if: github.event_name != 'pull_request' && env.FIREBASE_PROJECT_ID != '' && env.FIREBASE_SERVICE_ACCOUNT_READY == 'true'
