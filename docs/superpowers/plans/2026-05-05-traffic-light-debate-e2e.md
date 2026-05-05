@@ -42,4 +42,6 @@
 - [x] `npm test -- --run`
 - [x] `npm run build`
 - [x] `npm run test:e2e`
-- [ ] GitHub Actions 최신 run에서 E2E와 Firebase Hosting/Rules 배포 성공 확인
+- [x] GitHub Actions 최신 run에서 E2E와 Firebase Hosting/Rules 배포 성공 확인
+
+검증 메모: GitHub Actions run `25364258243`에서 `E2E test`, `Deploy live channel`, `Deploy Firestore rules` 단계가 모두 성공했다.
