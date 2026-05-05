@@ -47,6 +47,10 @@ export function getFirebaseServices(): FirebaseServices | null {
 }
 
 function readFirebaseConfig(): FirebaseConfig | null {
+  if (import.meta.env.VITE_FORCE_DEMO_REPOSITORY === "true") {
+    return null;
+  }
+
   const config = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
     authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,

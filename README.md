@@ -56,4 +56,7 @@ Firestore Rules까지 자동 배포하려면 이 서비스 계정에 Firebase Ho
 ```bash
 npm test -- --run
 npm run build
+npm run test:e2e
 ```
+
+`npm run test:e2e`는 `VITE_FORCE_DEMO_REPOSITORY=true`로 Vite dev server를 띄운 뒤, 교사 세션 생성부터 학생 의견 제출, DB 백업 기록까지 실제 브라우저에서 확인합니다. 처음 실행하는 환경에서는 `npx playwright install chromium`으로 브라우저를 먼저 설치하세요.

@@ -48,6 +48,12 @@ jobs:
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
 
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E test
+        run: npm run test:e2e
+
       - name: Deploy preview channel
         if: github.event_name == 'pull_request' && env.FIREBASE_PROJECT_ID != '' && env.FIREBASE_CONFIG_READY == 'true' && env.FIREBASE_SERVICE_ACCOUNT_READY == 'true'
         uses: FirebaseExtended/action-hosting-deploy@v0.10.0
