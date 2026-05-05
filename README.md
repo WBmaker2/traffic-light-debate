@@ -55,8 +55,11 @@ Firestore Rules까지 자동 배포하려면 이 서비스 계정에 Firebase Ho
 
 ```bash
 npm test -- --run
+npm run test:rules
 npm run build
 npm run test:e2e
 ```
 
 `npm run test:e2e`는 `VITE_FORCE_DEMO_REPOSITORY=true`로 Vite dev server를 띄운 뒤, 교사 세션 생성부터 학생 의견 제출, DB 백업 기록까지 실제 브라우저에서 확인합니다. 처음 실행하는 환경에서는 `npx playwright install chromium`으로 브라우저를 먼저 설치하세요.
+
+`npm run test:rules`는 Firestore 에뮬레이터로 `firestore.rules`의 교사 소유권, 학생 제출, 공개 세션, DB 백업 권한을 검증합니다. 로컬 실행에는 Java Runtime이 필요하며, GitHub Actions에서는 Temurin Java 21을 설치해 배포 전에 자동 실행합니다.
