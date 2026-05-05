@@ -7,6 +7,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   checks: write
   contents: read
@@ -19,6 +23,7 @@ env:
 
 jobs:
   build_and_deploy:
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -58,6 +63,7 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
 
       - name: Install Playwright browsers
+        timeout-minutes: 30
         run: npx playwright install --with-deps chromium
 
       - name: E2E test
@@ -87,6 +93,45 @@ jobs:
         run: npx --yes firebase-tools deploy --only firestore:rules --project "$FIREBASE_PROJECT_ID" --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+
+      - name: Smoke check live teacher route
+        if: github.event_name != 'pull_request' && env.FIREBASE_PROJECT_ID != '' && env.FIREBASE_CONFIG_READY == 'true' && env.FIREBASE_SERVICE_ACCOUNT_READY == 'true'
+        run: |
+          set -euo pipefail
+          smoke_url="https://${FIREBASE_PROJECT_ID}.web.app/teacher"
+          max_attempts=6
+          attempt=1
+          while [ "$attempt" -le "$max_attempts" ]; do
+            echo "Smoke check attempt ${attempt}/${max_attempts}: ${smoke_url}"
+            if status_code=$(
+              curl \
+                --silent \
+                --location \
+                --show-error \
+                --max-time 20 \
+                --output /tmp/teacher-route.html \
+                --write-out '%{http_code}' \
+                "$smoke_url"
+            ); then
+              if [ "$status_code" = "200" ]; then
+                echo "Smoke check passed on attempt ${attempt}/${max_attempts}: HTTP ${status_code}"
+                exit 0
+              fi
+
+              echo "Attempt ${attempt}/${max_attempts}: expected HTTP 200 for ${smoke_url}, got HTTP ${status_code}"
+            else
+              echo "Attempt ${attempt}/${max_attempts}: network request failed for ${smoke_url}"
+            fi
+
+            if [ "$attempt" -lt "$max_attempts" ]; then
+              echo "Retrying after 10 seconds..."
+              sleep 10
+            else
+              echo "Smoke check failed after ${max_attempts} attempts for ${smoke_url}"
+              exit 1
+            fi
+            attempt=$((attempt + 1))
+          done
 
       - name: Skip deploy notice
         if: env.FIREBASE_PROJECT_ID == '' || env.FIREBASE_CONFIG_READY != 'true' || env.FIREBASE_SERVICE_ACCOUNT_READY != 'true'
