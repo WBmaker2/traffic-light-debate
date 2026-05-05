@@ -27,6 +27,7 @@ import type {
   DebateRoom,
   FilterMode,
   SortMode,
+  TeacherBackupRecord,
   TeacherDatabaseBackup,
 } from "../types";
 
@@ -56,6 +57,11 @@ export function TeacherDashboard({ navigate }: TeacherDashboardProps) {
   const rooms = useRealtimeValue<DebateRoom[]>(
     [],
     (onValue) => (auth.user ? repo.subscribeRooms(auth.user.uid, onValue) : () => undefined),
+    [repo, auth.user?.uid],
+  );
+  const backupRecords = useRealtimeValue<TeacherBackupRecord[]>(
+    [],
+    (onValue) => (auth.user ? repo.subscribeBackups(auth.user.uid, onValue) : () => undefined),
     [repo, auth.user?.uid],
   );
 
@@ -165,6 +171,18 @@ export function TeacherDashboard({ navigate }: TeacherDashboardProps) {
     }
 
     setBackupPreview(parseTeacherBackup(JSON.parse(await file.text())));
+  }
+
+  function handleDownloadBackupRecord(record: TeacherBackupRecord) {
+    downloadJson(
+      record.fileName || `traffic-light-debate-backup-${record.createdAt}.json`,
+      record.payload,
+    );
+    setNotice("DB 백업 JSON 파일을 저장했습니다.");
+  }
+
+  function handlePreviewBackupRecord(record: TeacherBackupRecord) {
+    setBackupPreview(parseTeacherBackup(record.payload));
   }
 
   function openEditRoom(room: DebateRoom) {
@@ -375,6 +393,12 @@ export function TeacherDashboard({ navigate }: TeacherDashboardProps) {
               ))
             )}
           </div>
+
+          <BackupHistory
+            records={backupRecords}
+            onDownload={handleDownloadBackupRecord}
+            onRestore={handlePreviewBackupRecord}
+          />
         </section>
       </section>
 
@@ -572,6 +596,60 @@ function BackupPreview({ backup }: { backup: TeacherDatabaseBackup }) {
       </ul>
     </div>
   );
+}
+
+function BackupHistory({
+  records,
+  onDownload,
+  onRestore,
+}: {
+  records: TeacherBackupRecord[];
+  onDownload: (record: TeacherBackupRecord) => void;
+  onRestore: (record: TeacherBackupRecord) => void;
+}) {
+  return (
+    <section className="backup-history" aria-labelledby="backup-history-title">
+      <div className="backup-history__header">
+        <div>
+          <h3 id="backup-history-title">DB 백업 기록</h3>
+          <p>최근 백업 {records.length}개</p>
+        </div>
+      </div>
+      {records.length === 0 ? (
+        <p className="empty-copy">아직 저장된 DB 백업 기록이 없습니다.</p>
+      ) : (
+        <div className="backup-history__list">
+          {records.slice(0, 5).map((record) => (
+            <article className="backup-record" key={record.id}>
+              <div>
+                <strong>{formatBackupDate(record.createdAt)}</strong>
+                <small>
+                  세션 {record.roomCount}개 · 의견 {record.postCount}개
+                </small>
+              </div>
+              <div className="backup-record__actions">
+                <button className="action-button" type="button" onClick={() => onDownload(record)}>
+                  <FileJson size={17} aria-hidden="true" />
+                  JSON
+                </button>
+                <button className="action-button" type="button" onClick={() => onRestore(record)}>
+                  <RotateCcw size={17} aria-hidden="true" />
+                  복원
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function formatBackupDate(value: string): string {
+  return new Date(value).toLocaleString("ko-KR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
 }
 
 function statusLabel(status: DebateRoom["status"]): string {

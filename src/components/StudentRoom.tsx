@@ -47,16 +47,24 @@ export function StudentRoom({ roomId }: StudentRoomProps) {
       return;
     }
 
-    await repo.addPost(roomId, {
-      studentName,
-      stance,
-      reason,
-      clientId: getClientId(),
-    });
-    localStorage.setItem("debate-student-name", studentName);
-    setReason("");
-    setSubmitted(true);
-    setError("");
+    try {
+      await repo.addPost(roomId, {
+        studentName,
+        stance,
+        reason,
+        clientId: getClientId(),
+      });
+      localStorage.setItem("debate-student-name", studentName);
+      setReason("");
+      setSubmitted(true);
+      setError("");
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "의견을 제출하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      );
+    }
   }
 
   return (

@@ -26,6 +26,7 @@ import type {
   DebateRoom,
   DebateRoomExport,
   DebateRoomStatus,
+  TeacherBackupRecord,
   TeacherDatabaseBackup,
   TeacherUser,
   Unsubscribe,
@@ -35,6 +36,7 @@ import { getFirebaseServices, type FirebaseServices } from "./firebase";
 export type DebateRepository = {
   mode: "firebase" | "demo";
   subscribeRooms(ownerUid: string, onValue: (rooms: DebateRoom[]) => void): Unsubscribe;
+  subscribeBackups(ownerUid: string, onValue: (backups: TeacherBackupRecord[]) => void): Unsubscribe;
   subscribeRoom(roomId: string, onValue: (room: DebateRoom | null) => void): Unsubscribe;
   subscribePosts(roomId: string, onValue: (posts: DebatePost[]) => void): Unsubscribe;
   findRoomBySessionCode(sessionCode: string): Promise<DebateRoom | null>;
@@ -84,6 +86,24 @@ class FirebaseDebateRepository implements DebateRepository {
     });
   }
 
+  subscribeBackups(
+    ownerUid: string,
+    onValue: (backups: TeacherBackupRecord[]) => void,
+  ): Unsubscribe {
+    const backupsQuery = query(
+      collection(this.services.db, "backups"),
+      where("ownerUid", "==", ownerUid),
+    );
+
+    return onSnapshot(backupsQuery, (snapshot) => {
+      onValue(
+        snapshot.docs
+          .map(backupRecordFromSnapshot)
+          .sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
+      );
+    });
+  }
+
   subscribeRoom(roomId: string, onValue: (room: DebateRoom | null) => void): Unsubscribe {
     return onSnapshot(doc(this.services.db, "rooms", roomId), (snapshot) => {
       onValue(snapshot.exists() ? roomFromSnapshot(snapshot) : null);
@@ -108,7 +128,12 @@ class FirebaseDebateRepository implements DebateRepository {
       return null;
     }
 
-    const roomId = publicRoom.data().roomId as string;
+    const publicRoomData = publicRoom.data();
+    if (!["open", "closed"].includes(publicRoomData.status as string)) {
+      return null;
+    }
+
+    const roomId = publicRoomData.roomId as string;
     const room = await getDoc(doc(this.services.db, "rooms", roomId));
     return room.exists() ? roomFromSnapshot(room) : null;
   }
@@ -376,6 +401,7 @@ class LocalDebateRepository implements DebateRepository {
   mode = "demo" as const;
   private state = readLocalState();
   private roomListeners = new Set<(rooms: DebateRoom[]) => void>();
+  private backupListeners = new Set<(backups: TeacherBackupRecord[]) => void>();
   private roomDetailListeners = new Map<string, Set<(room: DebateRoom | null) => void>>();
   private postListeners = new Map<string, Set<(posts: DebatePost[]) => void>>();
 
@@ -386,6 +412,22 @@ class LocalDebateRepository implements DebateRepository {
     this.roomListeners.add(listener);
     listener();
     return () => this.roomListeners.delete(listener);
+  }
+
+  subscribeBackups(
+    ownerUid: string,
+    onValue: (backups: TeacherBackupRecord[]) => void,
+  ): Unsubscribe {
+    const listener = () => {
+      onValue(
+        this.state.backups
+          .filter((backup) => backup.ownerUid === ownerUid)
+          .sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
+      );
+    };
+    this.backupListeners.add(listener);
+    listener();
+    return () => this.backupListeners.delete(listener);
   }
 
   subscribeRoom(roomId: string, onValue: (room: DebateRoom | null) => void): Unsubscribe {
@@ -525,7 +567,20 @@ class LocalDebateRepository implements DebateRepository {
         .map((room) => this.getRoomWithPosts(room.id)),
     );
 
-    return createTeacherBackup(owner, entries);
+    const backup = createTeacherBackup(owner, entries);
+    this.state.backups.unshift({
+      id: makeId("backup"),
+      ownerUid: owner.uid,
+      fileName: makeBackupFileName(),
+      roomIds: entries.map((entry) => entry.room.id),
+      roomCount: backup.summary.roomCount,
+      postCount: backup.summary.postCount,
+      createdAt: backup.exportedAt,
+      appVersion: backup.appVersion,
+      payload: backup,
+    });
+    this.commit();
+    return backup;
   }
 
   async restoreBackup(
@@ -594,6 +649,9 @@ class LocalDebateRepository implements DebateRepository {
     for (const listener of this.roomListeners) {
       listener(this.state.rooms);
     }
+    for (const listener of this.backupListeners) {
+      listener(this.state.backups);
+    }
     for (const [roomId, listeners] of this.roomDetailListeners) {
       const room = this.state.rooms.find((item) => item.id === roomId) ?? null;
       for (const listener of listeners) {
@@ -612,6 +670,7 @@ class LocalDebateRepository implements DebateRepository {
 type LocalState = {
   rooms: DebateRoom[];
   posts: DebatePost[];
+  backups: TeacherBackupRecord[];
 };
 
 const LOCAL_KEY = "traffic-light-debate-demo-v1";
@@ -629,12 +688,21 @@ function readLocalState(): LocalState {
   }
 
   try {
-    return JSON.parse(raw) as LocalState;
+    return normalizeLocalState(JSON.parse(raw));
   } catch {
     const seed = createSeedState();
     writeLocalState(seed);
     return seed;
   }
+}
+
+function normalizeLocalState(value: unknown): LocalState {
+  const state = value as Partial<LocalState>;
+  return {
+    rooms: Array.isArray(state.rooms) ? state.rooms : [],
+    posts: Array.isArray(state.posts) ? state.posts : [],
+    backups: Array.isArray(state.backups) ? state.backups : [],
+  };
 }
 
 function writeLocalState(state: LocalState): void {
@@ -715,6 +783,7 @@ function createSeedState(): LocalState {
         createdAt: now,
       },
     ],
+    backups: [],
   };
 }
 
@@ -750,6 +819,23 @@ function postFromSnapshot(snapshot: QueryDocumentSnapshot<DocumentData>): Debate
     createdAt: data.createdAt,
     clientId: data.clientId,
     sourcePostId: data.sourcePostId,
+  };
+}
+
+function backupRecordFromSnapshot(
+  snapshot: QueryDocumentSnapshot<DocumentData>,
+): TeacherBackupRecord {
+  const data = snapshot.data();
+  return {
+    id: snapshot.id,
+    ownerUid: data.ownerUid,
+    fileName: data.fileName,
+    roomIds: Array.isArray(data.roomIds) ? data.roomIds : [],
+    roomCount: data.roomCount ?? data.payload?.summary?.roomCount ?? 0,
+    postCount: data.postCount ?? data.payload?.summary?.postCount ?? 0,
+    createdAt: data.createdAt,
+    appVersion: data.appVersion,
+    payload: data.payload,
   };
 }
 

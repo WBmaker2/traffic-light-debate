@@ -20,13 +20,17 @@ export function StudentJoin({ initialCode = "", navigate }: StudentJoinProps) {
       return;
     }
 
-    const room = await repo.findRoomBySessionCode(normalized);
-    if (!room) {
-      setError("토론방을 찾을 수 없습니다.");
-      return;
-    }
+    try {
+      const room = await repo.findRoomBySessionCode(normalized);
+      if (!room) {
+        setError("토론방을 찾을 수 없습니다.");
+        return;
+      }
 
-    navigate(`/student/rooms/${room.id}`);
+      navigate(`/student/rooms/${room.id}`);
+    } catch {
+      setError("토론방을 찾을 수 없습니다.");
+    }
   }
 
   return (

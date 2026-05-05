@@ -11,33 +11,159 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/rooms/$(roomId)).data.ownerUid == request.auth.uid;
     }
 
+    function ownsRoomAfter(roomId) {
+      return signedIn()
+        && getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.ownerUid == request.auth.uid;
+    }
+
+    function canReadPublicRoom(roomId) {
+      return get(/databases/$(database)/documents/rooms/$(roomId)).data.status in ["open", "closed"];
+    }
+
+    function isNonEmptyString(value, maxLength) {
+      return value is string && value.size() > 0 && value.size() <= maxLength;
+    }
+
+    function hasValidRoomShape(data) {
+      return data.keys().hasOnly([
+          "id",
+          "ownerUid",
+          "topic",
+          "sessionCode",
+          "className",
+          "memo",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "closedAt",
+          "archivedAt",
+          "deletedAt",
+          "sourceRoomId",
+          "importedFromBackupId",
+          "postCount"
+        ])
+        && isNonEmptyString(data.ownerUid, 128)
+        && isNonEmptyString(data.topic, 300)
+        && isNonEmptyString(data.sessionCode, 20)
+        && data.status in ["open", "closed", "archived", "deleted"]
+        && isNonEmptyString(data.createdAt, 40)
+        && isNonEmptyString(data.updatedAt, 40)
+        && data.postCount is int
+        && data.postCount >= 0
+        && (!("id" in data) || isNonEmptyString(data.id, 128))
+        && (!("className" in data) || (data.className is string && data.className.size() <= 80))
+        && (!("memo" in data) || (data.memo is string && data.memo.size() <= 500))
+        && (!("closedAt" in data) || isNonEmptyString(data.closedAt, 40))
+        && (!("archivedAt" in data) || isNonEmptyString(data.archivedAt, 40))
+        && (!("deletedAt" in data) || isNonEmptyString(data.deletedAt, 40))
+        && (!("sourceRoomId" in data) || isNonEmptyString(data.sourceRoomId, 128))
+        && (!("importedFromBackupId" in data) || isNonEmptyString(data.importedFromBackupId, 80));
+    }
+
+    function hasValidPublicRoomShape(data) {
+      return data.keys().hasOnly(["roomId", "topic", "status", "updatedAt"])
+        && isNonEmptyString(data.roomId, 128)
+        && isNonEmptyString(data.topic, 300)
+        && data.status in ["open", "closed", "archived", "deleted"]
+        && isNonEmptyString(data.updatedAt, 40);
+    }
+
+    function hasValidPostShape(data, roomId) {
+      return data.keys().hasOnly([
+          "id",
+          "roomId",
+          "studentName",
+          "stance",
+          "reason",
+          "createdAt",
+          "clientId",
+          "sourcePostId"
+        ])
+        && data.roomId == roomId
+        && isNonEmptyString(data.studentName, 40)
+        && isNonEmptyString(data.reason, 280)
+        && data.stance in ["agree", "disagree", "neutral"]
+        && isNonEmptyString(data.createdAt, 40)
+        && (!("id" in data) || isNonEmptyString(data.id, 128))
+        && (!("clientId" in data) || isNonEmptyString(data.clientId, 128))
+        && (!("sourcePostId" in data) || isNonEmptyString(data.sourcePostId, 128));
+    }
+
+    function isStudentPostCountUpdate() {
+      return resource.data.status == "open"
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["postCount", "updatedAt"])
+        && request.resource.data.postCount == resource.data.postCount + 1
+        && isNonEmptyString(request.resource.data.updatedAt, 40);
+    }
+
+    function hasValidBackupShape(data) {
+      return data.keys().hasOnly([
+          "ownerUid",
+          "kind",
+          "roomIds",
+          "fileName",
+          "payload",
+          "roomCount",
+          "postCount",
+          "createdAt",
+          "appVersion"
+        ])
+        && data.ownerUid == request.auth.uid
+        && data.kind == "teacher-database-backup"
+        && data.roomIds is list
+        && isNonEmptyString(data.fileName, 160)
+        && data.payload is map
+        && data.payload.ownerUid == request.auth.uid
+        && data.payload.kind == "teacher-database-backup"
+        && data.roomCount is int
+        && data.roomCount >= 0
+        && data.postCount is int
+        && data.postCount >= 0
+        && isNonEmptyString(data.createdAt, 40)
+        && isNonEmptyString(data.appVersion, 40);
+    }
+
     match /users/{uid} {
       allow read, write: if signedIn() && request.auth.uid == uid;
     }
 
     match /rooms/{roomId} {
-      allow read, write: if signedIn() && resource.data.ownerUid == request.auth.uid;
-      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow read: if ownsRoom(roomId) || resource.data.status in ["open", "closed"];
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && hasValidRoomShape(request.resource.data);
+      allow update: if (
+          signedIn()
+          && resource.data.ownerUid == request.auth.uid
+          && request.resource.data.ownerUid == resource.data.ownerUid
+          && request.resource.data.sessionCode == resource.data.sessionCode
+          && hasValidRoomShape(request.resource.data)
+        ) || isStudentPostCountUpdate();
+      allow delete: if false;
 
       match /posts/{postId} {
-        allow read, update, delete: if ownsRoom(roomId);
-        allow create: if get(/databases/$(database)/documents/rooms/$(roomId)).data.status == "open"
-          && request.resource.data.studentName is string
-          && request.resource.data.reason is string
-          && request.resource.data.stance in ["agree", "disagree", "neutral"];
+        allow read: if ownsRoom(roomId) || canReadPublicRoom(roomId);
+        allow create: if hasValidPostShape(request.resource.data, roomId)
+          && (
+            ownsRoomAfter(roomId)
+            || get(/databases/$(database)/documents/rooms/$(roomId)).data.status == "open"
+          );
+        allow update, delete: if ownsRoom(roomId);
       }
     }
 
     match /publicRooms/{sessionCode} {
       allow read: if true;
-      allow write: if signedIn();
+      allow create, update: if signedIn()
+        && hasValidPublicRoomShape(request.resource.data)
+        && ownsRoomAfter(request.resource.data.roomId);
+      allow delete: if signedIn() && ownsRoom(resource.data.roomId);
     }
 
     match /backups/{backupId} {
-      allow read, write: if signedIn()
-        && request.resource.data.ownerUid == request.auth.uid;
-      allow read: if signedIn()
-        && resource.data.ownerUid == request.auth.uid;
+      allow read: if signedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if signedIn() && hasValidBackupShape(request.resource.data);
+      allow update, delete: if false;
     }
   }
 }

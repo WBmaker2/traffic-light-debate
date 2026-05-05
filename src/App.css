@@ -341,6 +341,56 @@ select:focus-visible {
   gap: 10px;
 }
 
+.backup-history {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #e4ddd0;
+}
+
+.backup-history__header,
+.backup-record {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.backup-history__header h3,
+.backup-history__header p {
+  margin: 0;
+}
+
+.backup-history__header p,
+.backup-record small {
+  color: #62665f;
+}
+
+.backup-history__list {
+  display: grid;
+  gap: 8px;
+}
+
+.backup-record {
+  padding: 12px;
+  border: 1px solid #e4ddd0;
+  border-radius: 8px;
+  background: #fffdf8;
+}
+
+.backup-record > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.backup-record__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .session-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -736,6 +786,11 @@ legend {
   .session-controls,
   .session-row {
     grid-template-columns: 1fr;
+  }
+
+  .backup-record {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .row-actions {

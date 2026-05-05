@@ -99,6 +99,18 @@ export type TeacherDatabaseBackup = {
   }>;
 };
 
+export type TeacherBackupRecord = {
+  id: string;
+  ownerUid: string;
+  fileName: string;
+  roomIds: string[];
+  roomCount: number;
+  postCount: number;
+  createdAt: string;
+  appVersion: string;
+  payload: TeacherDatabaseBackup;
+};
+
 export type BackupPreview = {
   roomCount: number;
   postCount: number;
