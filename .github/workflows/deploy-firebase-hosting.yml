@@ -48,19 +48,6 @@ jobs:
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
 
-      - name: Write Firebase service account
-        if: github.event_name != 'pull_request' && env.FIREBASE_PROJECT_ID != '' && env.FIREBASE_SERVICE_ACCOUNT_READY == 'true'
-        run: |
-          cat > "$RUNNER_TEMP/firebase-service-account.json" <<'JSON'
-          ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TRAFFIC_LIGHT_DEBATE }}
-          JSON
-
-      - name: Deploy Firestore rules
-        if: github.event_name != 'pull_request' && env.FIREBASE_PROJECT_ID != '' && env.FIREBASE_SERVICE_ACCOUNT_READY == 'true'
-        run: npx firebase-tools deploy --only firestore:rules --project "$FIREBASE_PROJECT_ID" --non-interactive
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
-
       - name: Deploy preview channel
         if: github.event_name == 'pull_request' && env.FIREBASE_PROJECT_ID != '' && env.FIREBASE_CONFIG_READY == 'true' && env.FIREBASE_SERVICE_ACCOUNT_READY == 'true'
         uses: FirebaseExtended/action-hosting-deploy@v0.10.0
@@ -77,6 +64,19 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TRAFFIC_LIGHT_DEBATE }}
           projectId: ${{ env.FIREBASE_PROJECT_ID }}
           channelId: live
+
+      - name: Write Firebase service account
+        if: github.event_name != 'pull_request' && env.FIREBASE_PROJECT_ID != '' && env.FIREBASE_SERVICE_ACCOUNT_READY == 'true'
+        run: |
+          cat > "$RUNNER_TEMP/firebase-service-account.json" <<'JSON'
+          ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TRAFFIC_LIGHT_DEBATE }}
+          JSON
+
+      - name: Deploy Firestore rules
+        if: github.event_name != 'pull_request' && env.FIREBASE_PROJECT_ID != '' && env.FIREBASE_SERVICE_ACCOUNT_READY == 'true'
+        run: npx --yes firebase-tools deploy --only firestore:rules --project "$FIREBASE_PROJECT_ID" --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
 
       - name: Skip deploy notice
         if: env.FIREBASE_PROJECT_ID == '' || env.FIREBASE_CONFIG_READY != 'true' || env.FIREBASE_SERVICE_ACCOUNT_READY != 'true'
